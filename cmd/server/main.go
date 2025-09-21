@@ -55,8 +55,8 @@ func main() {
 	}))
 
 	app.Use(limiter.New(limiter.Config{
-		Max:      100,
-		Duration: time.Minute,
+		Max:        100,
+		Expiration: time.Minute,
 	}))
 
 	// Serve static files from the dist directory
