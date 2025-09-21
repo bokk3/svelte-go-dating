@@ -13,6 +13,7 @@
   
   let currentView = 'swipe';
   let showLogin = true;
+  let selectedMatch = null;
   
   $: isAuthenticated = $authStore.token !== null;
   
@@ -39,6 +40,14 @@
   
   function switchView(view) {
     currentView = view;
+    if (view !== 'chat') {
+      selectedMatch = null;
+    }
+  }
+  
+  function openChat(event) {
+    selectedMatch = event.detail.match;
+    currentView = 'chat';
   }
 </script>
 
@@ -76,9 +85,6 @@
         >
           👤
         </button>
-        <button class="nav-btn" on:click={handleLogout}>
-          🚪
-        </button>
       </nav>
       
       <!-- Main Content -->
@@ -86,11 +92,14 @@
         {#if currentView === 'swipe'}
           <SwipeView />
         {:else if currentView === 'matches'}
-          <MatchesView on:openChat={(e) => switchView('chat')} />
+          <MatchesView on:openChat={openChat} />
         {:else if currentView === 'chat'}
-          <ChatView on:back={() => switchView('matches')} />
+          <ChatView 
+            matchId={selectedMatch?.id} 
+            on:back={() => switchView('matches')} 
+          />
         {:else if currentView === 'profile'}
-          <ProfileView />
+          <ProfileView on:logout={handleLogout} />
         {/if}
       </div>
     </div>

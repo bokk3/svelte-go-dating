@@ -146,6 +146,17 @@ func Login(c *fiber.Ctx) error {
     })
 }
 
+func GetCurrentUser(c *fiber.Ctx) error {
+    userID := c.Locals("user_id").(uuid.UUID)
+    
+    user, err := db.GetUser(userID)
+    if err != nil {
+        return c.Status(404).JSON(fiber.Map{"error": "User not found"})
+    }
+    
+    return c.JSON(fiber.Map{"user": user})
+}
+
 func RefreshToken(c *fiber.Ctx) error {
     var req struct {
         RefreshToken string `json:"refresh_token"`
@@ -197,10 +208,59 @@ func UpdateProfile(c *fiber.Ctx) error {
 func GetMatches(c *fiber.Ctx) error {
     userID := c.Locals("user_id").(uuid.UUID)
     
-    // First get potential matches for swiping
-    profiles, err := db.GetPotentialMatches(userID, 10)
+    // Get actual matches for this user
+    matches, err := db.GetUserMatches(userID)
     if err != nil {
         return c.Status(500).JSON(fiber.Map{"error": "Failed to get matches"})
+    }
+    
+    // Populate each match with user profiles
+    var enrichedMatches []fiber.Map
+    for _, match := range matches {
+        // Get profiles for both users
+        user1Profile, _ := db.GetProfile(match.User1ID)
+        user2Profile, _ := db.GetProfile(match.User2ID)
+        
+        // Determine which is the other user
+        var otherUser *models.Profile
+        if match.User1ID == userID {
+            otherUser = user2Profile
+        } else {
+            otherUser = user1Profile
+        }
+        
+        // Get last message for this match
+        messages, _ := db.GetMatchMessages(match.ID)
+        var lastMessage string
+        var lastMessageTime *time.Time
+        if len(messages) > 0 {
+            lastMessage = messages[len(messages)-1].Message
+            lastMessageTime = &messages[len(messages)-1].CreatedAt
+        }
+        
+        enrichedMatch := fiber.Map{
+            "id":               match.ID,
+            "matched_at":       match.MatchedAt,
+            "is_active":        match.IsActive,
+            "other_user":       otherUser,
+            "last_message":     lastMessage,
+            "last_message_at":  lastMessageTime,
+            "unread_count":     0, // TODO: Implement unread count
+        }
+        
+        enrichedMatches = append(enrichedMatches, enrichedMatch)
+    }
+    
+    return c.JSON(enrichedMatches)
+}
+
+func GetPotentialMatches(c *fiber.Ctx) error {
+    userID := c.Locals("user_id").(uuid.UUID)
+    
+    // Get potential matches for swiping
+    profiles, err := db.GetPotentialMatches(userID, 10)
+    if err != nil {
+        return c.Status(500).JSON(fiber.Map{"error": "Failed to get potential matches"})
     }
     
     return c.JSON(profiles)
@@ -276,6 +336,92 @@ func WebSocketHandler(c *websocket.Conn) {
             break
         }
     }
+}
+
+// Message handlers
+func GetMessages(c *fiber.Ctx) error {
+    userID := c.Locals("user_id").(uuid.UUID)
+    matchIDStr := c.Params("matchId")
+    
+    matchID, err := uuid.Parse(matchIDStr)
+    if err != nil {
+        return c.Status(400).JSON(fiber.Map{"error": "Invalid match ID"})
+    }
+    
+    // Verify user is part of this match
+    matches, err := db.GetUserMatches(userID)
+    if err != nil {
+        return c.Status(500).JSON(fiber.Map{"error": "Failed to get matches"})
+    }
+    
+    validMatch := false
+    for _, match := range matches {
+        if match.ID == matchID {
+            validMatch = true
+            break
+        }
+    }
+    
+    if !validMatch {
+        return c.Status(403).JSON(fiber.Map{"error": "Access denied to this match"})
+    }
+    
+    // Get messages for this match
+    messages, err := db.GetMatchMessages(matchID)
+    if err != nil {
+        return c.Status(500).JSON(fiber.Map{"error": "Failed to get messages"})
+    }
+    
+    return c.JSON(fiber.Map{
+        "messages": messages,
+        "match_id": matchID,
+    })
+}
+
+func GetMatchDetails(c *fiber.Ctx) error {
+    userID := c.Locals("user_id").(uuid.UUID)
+    matchIDStr := c.Params("matchId")
+    
+    matchID, err := uuid.Parse(matchIDStr)
+    if err != nil {
+        return c.Status(400).JSON(fiber.Map{"error": "Invalid match ID"})
+    }
+    
+    // Get match details
+    matches, err := db.GetUserMatches(userID)
+    if err != nil {
+        return c.Status(500).JSON(fiber.Map{"error": "Failed to get matches"})
+    }
+    
+    var targetMatch *models.Match
+    for _, match := range matches {
+        if match.ID == matchID {
+            targetMatch = &match
+            break
+        }
+    }
+    
+    if targetMatch == nil {
+        return c.Status(404).JSON(fiber.Map{"error": "Match not found"})
+    }
+    
+    // Get the other user's profile
+    var otherUserID uuid.UUID
+    if targetMatch.User1ID == userID {
+        otherUserID = targetMatch.User2ID
+    } else {
+        otherUserID = targetMatch.User1ID
+    }
+    
+    otherProfile, err := db.GetProfile(otherUserID)
+    if err != nil {
+        return c.Status(500).JSON(fiber.Map{"error": "Failed to get other user's profile"})
+    }
+    
+    return c.JSON(fiber.Map{
+        "match": targetMatch,
+        "other_user": otherProfile,
+    })
 }
 
 // Payment handlers (placeholders)

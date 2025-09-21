@@ -17,7 +17,7 @@
   async function loadProfiles() {
     try {
       loading = true;
-      const response = await axios.get('/api/v1/matches');
+      const response = await axios.get('/api/v1/potential-matches');
       profiles = response.data;
       
       if (profiles.length === 0) {

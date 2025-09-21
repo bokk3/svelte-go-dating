@@ -103,10 +103,19 @@ func setupRoutes(app *fiber.App) {
 
 	// Protected routes
 	protected := api.Use(middleware.AuthRequired())
+	protected.Get("/me", handlers.GetCurrentUser)
 	protected.Get("/profile", handlers.GetProfile)
 	protected.Put("/profile", handlers.UpdateProfile)
 	protected.Get("/matches", handlers.GetMatches)
+	protected.Get("/potential-matches", handlers.GetPotentialMatches)
 	protected.Post("/swipe", handlers.Swipe)
+
+	// Message routes
+	protected.Get("/matches/:matchId/messages", handlers.GetMessages)
+	protected.Get("/matches/:matchId", handlers.GetMatchDetails)
+
+	// Development/Testing routes
+	protected.Post("/seed", handlers.SeedData)
 
 	// WebSocket for real-time messaging (with auth)
 	app.Use("/ws", func(c *fiber.Ctx) error {

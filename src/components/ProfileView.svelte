@@ -1,6 +1,8 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
   import axios from 'axios';
+  
+  const dispatch = createEventDispatcher();
   
   let profile = null;
   let loading = true;
@@ -153,6 +155,16 @@
             </button>
           </div>
         {/if}
+      </div>
+      
+      <!-- Logout Section -->
+      <div class="logout-section">
+        <button 
+          class="btn btn-secondary logout-btn" 
+          on:click={() => dispatch('logout')}
+        >
+          🚪 Sign Out
+        </button>
       </div>
     </div>
   {/if}
@@ -325,6 +337,29 @@
   .upgrade-section p {
     margin: 0 0 16px 0;
     color: #6b7280;
+  }
+  
+  .logout-section {
+    padding: 24px;
+    border-top: 1px solid #e5e7eb;
+    background: #f9fafb;
+  }
+  
+  .logout-btn {
+    width: 100%;
+    background: #dc2626;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .logout-btn:hover {
+    background: #b91c1c;
+    transform: translateY(-1px);
   }
   
   @media (max-width: 768px) {

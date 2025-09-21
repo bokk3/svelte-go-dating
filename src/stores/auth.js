@@ -1,6 +1,9 @@
 import { writable } from 'svelte/store';
 import axios from 'axios';
 
+// Import WebSocket store (avoid circular dependency by importing lazily)
+let wsStore;
+
 // Create auth store
 function createAuthStore() {
   const { subscribe, set, update } = writable({
@@ -39,6 +42,13 @@ function createAuthStore() {
         // Set up axios default headers
         axios.defaults.headers.common['Authorization'] = `Bearer ${tokens.access_token}`;
         
+        // Connect WebSocket
+        if (!wsStore) {
+          const { wsStore: ws } = await import('./websocket.js');
+          wsStore = ws;
+        }
+        wsStore.connect(tokens.access_token);
+        
         return true;
       } catch (error) {
         const errorMessage = error.response?.data?.error || 'Login failed';
@@ -74,6 +84,13 @@ function createAuthStore() {
         // Set up axios default headers
         axios.defaults.headers.common['Authorization'] = `Bearer ${tokens.access_token}`;
         
+        // Connect WebSocket
+        if (!wsStore) {
+          const { wsStore: ws } = await import('./websocket.js');
+          wsStore = ws;
+        }
+        wsStore.connect(tokens.access_token);
+        
         return true;
       } catch (error) {
         const errorMessage = error.response?.data?.error || 'Registration failed';
@@ -89,12 +106,32 @@ function createAuthStore() {
     setToken(token) {
       update(store => ({ ...store, token }));
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Verify token and get user info
+      this.verifyToken();
+    },
+    
+    async verifyToken() {
+      try {
+        const response = await axios.get('/api/v1/me');
+        update(store => ({ ...store, user: response.data.user }));
+        return true;
+      } catch (error) {
+        console.error('Token verification failed:', error);
+        this.logout();
+        return false;
+      }
     },
     
     logout() {
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       delete axios.defaults.headers.common['Authorization'];
+      
+      // Disconnect WebSocket
+      if (wsStore) {
+        wsStore.disconnect();
+      }
       
       set({
         token: null,

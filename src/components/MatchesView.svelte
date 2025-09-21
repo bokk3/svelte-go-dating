@@ -65,17 +65,34 @@
   {:else}
     <div class="matches-list">
       {#each matches as match}
-        <div class="match-card" on:click={() => openChat(match)}>
+        <div 
+          class="match-card" 
+          role="button"
+          tabindex="0"
+          on:click={() => openChat(match)}
+          on:keydown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              openChat(match);
+            }
+          }}
+        >
           <div class="match-avatar">
             <img 
-              src={match.user1?.avatar_url || match.user2?.avatar_url || '/placeholder-avatar.jpg'} 
-              alt="Match avatar"
+              src={match.other_user?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(match.other_user?.display_name || 'U')}&background=ff4458&color=fff&size=120`} 
+              alt={match.other_user?.display_name || 'Match'} 
+              on:error={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(match.other_user?.display_name || 'U')}&background=ff4458&color=fff&size=120`; }}
             />
-            <div class="online-indicator" class:online={true}></div>
+            <div class="online-indicator"></div>
           </div>
           
           <div class="match-info">
-            <h3>{match.user1?.display_name || match.user2?.display_name}</h3>
+            <div class="match-header">
+              <h3>{match.other_user?.display_name || 'Unknown'}</h3>
+              {#if match.other_user?.age}
+                <span class="age-badge">{match.other_user.age}</span>
+              {/if}
+            </div>
             <p class="last-message">
               {#if match.last_message}
                 {match.last_message}
@@ -83,6 +100,9 @@
                 Say hello! 👋
               {/if}
             </p>
+            {#if match.other_user?.location_city}
+              <p class="location">📍 {match.other_user.location_city}</p>
+            {/if}
           </div>
           
           <div class="match-meta">
@@ -201,15 +221,31 @@
     min-width: 0;
   }
   
+  .match-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
   .match-info h3 {
-    margin: 0 0 4px 0;
+    margin: 0;
     font-size: 18px;
     font-weight: 600;
     color: var(--dark-color);
   }
   
+  .age-badge {
+    background: var(--primary-color, #ff4458);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
   .last-message {
-    margin: 0;
+    margin: 0 0 4px 0;
     color: #6b7280;
     font-size: 14px;
     overflow: hidden;
@@ -217,7 +253,11 @@
     text-overflow: ellipsis;
   }
   
-  .match-meta {
+  .location {
+    margin: 0;
+    color: #9ca3af;
+    font-size: 12px;
+  }  .match-meta {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
