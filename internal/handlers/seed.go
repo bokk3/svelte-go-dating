@@ -113,18 +113,18 @@ func SeedData(c *fiber.Ctx) error {
 		bio := userData.Bio
 		gender := userData.Gender
 		locationCity := userData.Location
-		
+
 		profile := &models.Profile{
-			UserID:          user.ID,
-			DisplayName:     userData.DisplayName,
-			Age:             &age,
-			Bio:             &bio,
-			Gender:          &gender,
-			LocationCity:    &locationCity,
-			InterestedIn:    userData.Interests,
-			Photos:          []models.Photo{}, // No photos for now
-			CreatedAt:       time.Now(),
-			UpdatedAt:       time.Now(),
+			UserID:       user.ID,
+			DisplayName:  userData.DisplayName,
+			Age:          &age,
+			Bio:          &bio,
+			Gender:       &gender,
+			LocationCity: &locationCity,
+			InterestedIn: userData.Interests,
+			Photos:       []models.Photo{}, // No photos for now
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
 		}
 
 		err = db.CreateProfile(profile)
